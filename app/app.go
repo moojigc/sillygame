@@ -42,17 +42,12 @@ func routine(c *col.Collection, tracker *scoretracker.ScoreTracker, p *Player) {
 }
 
 func randomizeSlice[T any](slice []T) {
-	var shuffleCount int
-
 	sliceLen := len(slice)
-
-	for shuffleCount < sliceLen {
+	for i := 0; i < sliceLen; i++ {
 		from, to := randInt(int64(sliceLen)), randInt(int64(sliceLen))
 		originalTo := slice[to]
 		slice[to] = slice[from]
 		slice[from] = originalTo
-
-		shuffleCount++
 	}
 }
 
@@ -64,6 +59,7 @@ func runOneRound(players []*Player, tracker *scoretracker.ScoreTracker, round in
 	collection := col.New()
 
 	randomizeSlice(players)
+	log.Default.Print("Players are%s:\n", players)
 
 	for i := 0; i < len(players); i++ {
 		wg.Add(1)
