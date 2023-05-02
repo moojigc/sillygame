@@ -3,11 +3,11 @@ package log
 import "fmt"
 
 type Logger struct {
-	Include bool
+	Verbose bool
 }
 
 func (l *Logger) Print(s string, a ...any) {
-	if l.Include {
+	if l.Verbose {
 		fmt.Printf(s, a...)
 	}
 }

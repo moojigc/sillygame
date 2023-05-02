@@ -4,7 +4,7 @@ import "sync"
 
 type Collection struct {
 	RWMutex sync.RWMutex
-	Data    map[string]string
+	Data    map[string]interface{}
 }
 
 func (c *Collection) has(key string) bool {
@@ -17,7 +17,7 @@ func (c *Collection) has(key string) bool {
 
 func New() *Collection {
 	return &Collection{
-		Data:    make(map[string]string),
+		Data:    make(map[string]interface{}),
 		RWMutex: sync.RWMutex{},
 	}
 }
@@ -29,7 +29,7 @@ func (c *Collection) Has(key string) bool {
 	return c.has(key)
 }
 
-func (c *Collection) Add(key, value string) *Collection {
+func (c *Collection) Add(key string, value interface{}) *Collection {
 	c.RWMutex.Lock()
 	defer c.RWMutex.Unlock()
 
@@ -55,7 +55,7 @@ func (c *Collection) Delete(key string) bool {
 	return true
 }
 
-func (c *Collection) Get(key string) (string, bool) {
+func (c *Collection) Get(key string) (interface{}, bool) {
 	c.RWMutex.RLock()
 	defer c.RWMutex.RUnlock()
 
