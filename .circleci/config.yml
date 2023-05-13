@@ -23,8 +23,8 @@ jobs:
             --header 'X-Webhook-Password: '$WEBHOOK_PASS'' \
             --header 'Content-Type: application/json' \
             --data-raw '{
-                "container": "$CIRCLE_PROJECT_REPONAME",
-                "image": "$CIRCLE_PROJECT_REPONAME",
+                "container": "${CIRCLE_PROJECT_REPONAME}",
+                "image": "${CIRCLE_PROJECT_REPONAME}",
                 "stack": "portfolio"
             }'
 workflows:
