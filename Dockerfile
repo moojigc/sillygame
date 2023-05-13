@@ -4,10 +4,7 @@ WORKDIR /app
 
 COPY go.* .
 
-COPY ./app ./app
 COPY ./cmd ./cmd
-COPY ./collection ./collection
-COPY ./controller ./controller
 COPY ./scoretracker ./scoretracker
 COPY ./websocket ./websocket
 COPY ./web ./web
