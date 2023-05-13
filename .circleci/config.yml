@@ -19,14 +19,19 @@ jobs:
       - run:
           name: Run webhook
           command: |
+            cat <<EOF>>/tmp/$CIRCLE_PROJECT_REPONAME.json
+              {"container": "$CIRCLE_PROJECT_REPONAME",
+                "image": "$CIRCLE_PROJECT_REPONAME",
+                "tag": "1.1.0",
+                "stack": "portfolio"}
+            EOF
+
             curl --location --request POST $WEBHOOK_URL \
-            --header 'X-Webhook-Password: '$WEBHOOK_PASS'' \
-            --header 'Content-Type: application/json' \
-            --data-raw '{
-                "container": "${CIRCLE_PROJECT_REPONAME}",
-                "image": "${CIRCLE_PROJECT_REPONAME}",
-                "stack": "portfolio"
-            }'
+            --header "X-Webhook-Password: $WEBHOOK_PASS" \
+            --header "Content-Type: application/json" \
+            --data @/tmp/$CIRCLE_PROJECT_REPONAME.json
+
+            unlink /tmp/$CIRCLE_PROJECT_REPONAME.json
 workflows:
   build:
     jobs:
