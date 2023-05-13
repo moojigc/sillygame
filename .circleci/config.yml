@@ -10,24 +10,34 @@ jobs:
           command: |
             echo 'Starting build...'
             sudo docker login $DOCKERHUB_HOST -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
-            sudo docker build --pull --rm -f "Dockerfile" -t $DOCKERHUB_HOST/portfolio/$CIRCLE_PROJECT_REPONAME:1.1.0 "."
+            sudo docker build --pull --rm -f "Dockerfile" -t $DOCKERHUB_HOST/$CIRCLE_PROJECT_REPONAME:1.1.0 "."
       - run:
           name: Push Docker Image
           command: |
             echo 'Pushing to $DOCKERHUB_HOST...'
-            sudo docker push $DOCKERHUB_HOST/portfolio/$CIRCLE_PROJECT_REPONAME:1.1.0
+            sudo docker push $DOCKERHUB_HOST/$CIRCLE_PROJECT_REPONAME:1.1.0
       - run:
           name: Run webhook
           command: |
-            curl --location --request POST $WEBHOOK_URL \
-            --header "X-Webhook-Password: $WEBHOOK_PASS" \
-            --header "Content-Type: application/json" \
-            --data-raw '{
+            result=$(curl --location --request POST $WEBHOOK_URL \
+              --header "X-Webhook-Password: $WEBHOOK_PASS" \
+              --header "Content-Type: application/json" \
+              --data-raw '{
               "container": "sillygame",
               "image": "sillygame",
               "tag": "1.1.0",
               "stack": "portfolio"
-            }'
+              }')
+
+            echo $result
+
+            if [[ "$result" =~ 'exit status 1' ]]; then
+              echo "Webhook failed to process."
+              exit 1
+            elif [[ "$result" =~ 'rules were not satisfied' ]]; then
+              echo "Webhook setup improperly."
+              exit 1
+            fi
 workflows:
   build:
     jobs:
