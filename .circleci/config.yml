@@ -1,0 +1,39 @@
+version: 2.1
+jobs:
+  build-deploy:
+    machine: true
+    resource_class: moojigc/rocks_ci
+    steps:
+      - checkout
+      - run:
+          name: Build Docker Image
+          command: |
+            echo 'Starting build...'
+            sudo docker login $DOCKERHUB_HOST -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
+            sudo docker build --pull --rm -f "Dockerfile" -t $DOCKERHUB_HOST/portfolio/$CIRCLE_PROJECT_REPONAME:1.1.0 "."
+      - run:
+          name: Push Docker Image
+          command: |
+            echo 'Pushing to $DOCKERHUB_HOST...'
+            sudo docker push $DOCKERHUB_HOST/portfolio/$CIRCLE_PROJECT_REPONAME:1.1.0
+      - run:
+          name: Run webhook
+          command: |
+            curl --location --request POST $WEBHOOK_URL \
+            --header 'X-Webhook-Password: '$WEBHOOK_PASS'' \
+            --header 'Content-Type: application/json' \
+            --data-raw '{
+                "container": "$CIRCLE_PROJECT_REPONAME",
+                "image": "$CIRCLE_PROJECT_REPONAME",
+                "stack": "portfolio"
+            }'
+workflows:
+  build:
+    jobs:
+      - build-deploy:
+          context: elite
+          filters:
+            branches:
+              only:
+                - master
+                - main
