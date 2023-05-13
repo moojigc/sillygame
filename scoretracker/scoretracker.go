@@ -3,8 +3,6 @@ package scoretracker
 import (
 	"fmt"
 	"sync"
-
-	"github.com/moojigc/routines_game/log"
 )
 
 type ScoreTracker struct {
@@ -43,9 +41,9 @@ func (st *ScoreTracker) ListScores() {
 	defer st.Mutex.Unlock()
 
 	for player, score := range st.PlayerScores {
-		log.Default.Print("Player: %s; Score: %d\t", player, score)
+		fmt.Printf("Player: %s; Score: %d\t", player, score)
 	}
-	log.Default.Print("\n\n")
+	fmt.Printf("\n\n")
 }
 
 func New() *ScoreTracker {
