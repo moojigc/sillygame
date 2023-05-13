@@ -10,12 +10,12 @@ jobs:
           command: |
             echo 'Starting build...'
             sudo docker login $DOCKERHUB_HOST -u $DOCKERHUB_USER -p $DOCKERHUB_PASSWORD
-            sudo docker build --pull --rm -f "Dockerfile" -t $DOCKERHUB_HOST/$CIRCLE_PROJECT_REPONAME:1.1.0 "."
+            sudo docker build --pull --rm -f "Dockerfile" -t $DOCKERHUB_HOST/$CIRCLE_PROJECT_REPONAME:1.0.1 "."
       - run:
           name: Push Docker Image
           command: |
             echo 'Pushing to $DOCKERHUB_HOST...'
-            sudo docker push $DOCKERHUB_HOST/$CIRCLE_PROJECT_REPONAME:1.1.0
+            sudo docker push $DOCKERHUB_HOST/$CIRCLE_PROJECT_REPONAME:1.0.1
       - run:
           name: Run webhook
           command: |
@@ -25,7 +25,7 @@ jobs:
               --data-raw '{
               "container": "sillygame",
               "image": "sillygame",
-              "tag": "1.1.0",
+              "tag": "1.0.1",
               "stack": "portfolio"
               }')
 
