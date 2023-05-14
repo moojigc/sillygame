@@ -157,7 +157,7 @@
 <div id="container" class="pure-g">
 	<div>
 		<h1>Welcome to a silly game.</h1>
-		<canvas bind:this={canvas} id="canvas" width="720px" height="1280px" />
+		<canvas bind:this={canvas} id="canvas" width="720px" height="720px" />
 		<div id="players">
 			{Object.keys($players).length} players joined.
 		</div>
