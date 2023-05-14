@@ -14,6 +14,7 @@
 
 	let canvas: HTMLCanvasElement;
 
+	const canvasSize: Writable<[string, string]> = writable(['720px', '900px']);
 	const mouseDown: Writable<boolean> = writable(false);
 	const debugMode: Writable<boolean> = writable(false);
 	const players: Writable<Record<string, any>> = writable({});
@@ -88,6 +89,15 @@
 	let messenger: Messenger<EventTypes, Message>;
 
 	onMount(() => {
+		const isMobile = window.matchMedia('(max-width: 900px)');
+
+		if (isMobile.matches) {
+			$canvasSize = [
+				`${window.innerWidth - 100}px`,
+				`${window.innerHeight - 200}px`
+			];
+		}
+
 		const ctx = canvas.getContext('2d')!;
 		const pointer = new Pointer(ctx);
 
@@ -177,7 +187,12 @@
 <div id="container" class="pure-g">
 	<div>
 		<h1>Welcome to a silly game.</h1>
-		<canvas bind:this={canvas} id="canvas" width="720px" height="720px" />
+		<canvas
+			bind:this={canvas}
+			id="canvas"
+			width={$canvasSize[0]}
+			height={$canvasSize[1]}
+		/>
 		<div id="players">
 			{Object.keys($players).length} players joined.
 		</div>
@@ -216,6 +231,7 @@
 	}
 	canvas {
 		border: 1px black solid;
+		touch-action: none;
 	}
 	#container {
 		display: flex;
