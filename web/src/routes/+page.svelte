@@ -93,7 +93,7 @@
 
 		if (isMobile.matches) {
 			$canvasSize = [
-				`${window.innerWidth - 100}px`,
+				`${window.innerWidth}px`,
 				`${window.innerHeight - 200}px`
 			];
 		}
@@ -232,6 +232,8 @@
 	canvas {
 		border: 1px black solid;
 		touch-action: none;
+		margin-left: auto;
+		margin-right: auto;
 	}
 	#container {
 		display: flex;
