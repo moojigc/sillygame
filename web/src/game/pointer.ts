@@ -66,6 +66,7 @@ export class Pointer implements Coords {
 	speed = 2;
 	lineWidth = 5;
 	color = 'black';
+	usingTouchscreen = false;
 
 	private _canvasCenter: Coords;
 	private _moves = new Moves();
@@ -82,6 +83,13 @@ export class Pointer implements Coords {
 			this._move();
 		}
 		this._moves.add({ x: this.x, y: this.y });
+	}
+
+	getAbs({ x, y }: Partial<Coords>) {
+		return {
+			x: (this.x = this.x + (x || 0)),
+			y: (this.y = this.y + (y || 0))
+		};
 	}
 
 	moveRel({ x, y }: Partial<Coords>, stroke = true) {
@@ -102,7 +110,7 @@ export class Pointer implements Coords {
 	}
 
 	private _probablyLiftedFingerUp({ x, y }: Coords) {
-		if (!this._moves.hasEnoughData()) {
+		if (!this._moves.hasEnoughData() || !this.usingTouchscreen) {
 			return false;
 		}
 		const [distX, distY] = [Math.abs(x - this.x), Math.abs(y - this.y)];

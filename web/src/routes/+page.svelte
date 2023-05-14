@@ -48,12 +48,12 @@
 		return (ev: { key: string }) => {
 			if (ev.key in keyDownMapping) {
 				const fn = keyDownMapping[ev.key];
-				pointer.moveRel(fn(pointer));
+				const { x, y } = pointer.getAbs(fn(pointer));
 				messenger.send({
 					event: Events.M,
 					ts: Date.now(),
 					mouseDown: true,
-					coords: [pointer.x, pointer.y]
+					coords: [x, y]
 				});
 			}
 		};
@@ -69,10 +69,10 @@
 			preventDefault?: () => void;
 		}) => {
 			ev.preventDefault?.();
-			pointer.moveAbs(getMousePos(canvas, ev), $mouseDown);
+			const { x, y } = getMousePos(canvas, ev);
 			messenger.send({
 				event: Events.M,
-				coords: [pointer.x, pointer.y],
+				coords: [x, y],
 				ts: Date.now(),
 				mouseDown: $mouseDown
 			});
@@ -150,6 +150,7 @@
 
 		canvas.addEventListener('mousemove', MouseListener(pointer, messenger));
 		canvas.addEventListener('touchmove', (ev) => {
+			pointer.usingTouchscreen = true;
 			const listen = MouseListener(pointer, messenger);
 			for (const t of ev.changedTouches) {
 				listen(t);
@@ -167,9 +168,9 @@
 
 		messenger.onMessage(Events.M, (data) => {
 			logger.debug('+page.svelte callback', data);
-			if (data.userId !== messenger.userId) {
-				pointer.moveAbs(Coords.fromVector(data.coords), data.mouseDown);
-			}
+			pointer.moveAbs(Coords.fromVector(data.coords), data.mouseDown);
+			// if (data.userId !== messenger.userId) {
+			// }
 		});
 
 		messenger.onMessage(Events.PLAYER_JOINED, (data) => {
