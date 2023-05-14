@@ -86,10 +86,12 @@ export class Pointer implements Coords {
 	}
 
 	getAbs({ x, y }: Partial<Coords>) {
-		return {
+		const absCoords = {
 			x: (this.x = this.x + (x || 0)),
 			y: (this.y = this.y + (y || 0))
 		};
+
+		return absCoords;
 	}
 
 	moveRel({ x, y }: Partial<Coords>, stroke = true) {
@@ -110,7 +112,7 @@ export class Pointer implements Coords {
 	}
 
 	private _probablyLiftedFingerUp({ x, y }: Coords) {
-		if (!this._moves.hasEnoughData() || !this.usingTouchscreen) {
+		if (!this._moves.hasEnoughData()) {
 			return false;
 		}
 		const [distX, distY] = [Math.abs(x - this.x), Math.abs(y - this.y)];

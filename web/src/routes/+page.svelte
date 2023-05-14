@@ -70,12 +70,16 @@
 		}) => {
 			ev.preventDefault?.();
 			const { x, y } = getMousePos(canvas, ev);
-			messenger.send({
+
+			const message: Message = {
 				event: Events.M,
 				coords: [x, y],
 				ts: Date.now(),
 				mouseDown: $mouseDown
-			});
+			};
+			messenger.send(message);
+
+			pointer.moveAbs(Coords.fromVector(message.coords), $mouseDown);
 		};
 	}
 
@@ -149,12 +153,14 @@
 		});
 
 		canvas.addEventListener('mousemove', MouseListener(pointer, messenger));
+
+		const listen = MouseListener(pointer, messenger);
 		canvas.addEventListener('touchmove', (ev) => {
-			pointer.usingTouchscreen = true;
-			const listen = MouseListener(pointer, messenger);
+			$mouseDown = true;
 			for (const t of ev.changedTouches) {
 				listen(t);
 			}
+			$mouseDown = false;
 		});
 
 		messenger.onMessage(Events.HANDSHAKE, (data: Message<'HANDSHAKE'>) => {
@@ -168,9 +174,9 @@
 
 		messenger.onMessage(Events.M, (data) => {
 			logger.debug('+page.svelte callback', data);
-			pointer.moveAbs(Coords.fromVector(data.coords), data.mouseDown);
-			// if (data.userId !== messenger.userId) {
-			// }
+			if (data.userId !== messenger.userId) {
+				pointer.moveAbs(Coords.fromVector(data.coords), data.mouseDown);
+			}
 		});
 
 		messenger.onMessage(Events.PLAYER_JOINED, (data) => {
