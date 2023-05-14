@@ -8,6 +8,8 @@ function getProtocol(): 'ws:' | 'wss:' {
 	return 'ws:';
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export class MessengerError extends Error {}
 
 export class Messenger<EventTypes extends string, Message> {
@@ -34,7 +36,7 @@ export class Messenger<EventTypes extends string, Message> {
 			logger.error('socket error', ev);
 		};
 
-		ws.onmessage = (ev) => {
+		ws.onmessage = async (ev) => {
 			let parsed;
 			try {
 				parsed = JSON.parse(ev.data);
@@ -46,7 +48,7 @@ export class Messenger<EventTypes extends string, Message> {
 			const callback = this.callbacks.get(parsed.event);
 
 			if (callback) {
-				callback(parsed);
+				await callback(parsed);
 			}
 		};
 		return ws;
@@ -54,14 +56,17 @@ export class Messenger<EventTypes extends string, Message> {
 
 	socket!: WebSocket;
 	closed = false;
-	private callbacks: Map<EventTypes, (data: Message) => void> = new Map();
+	private callbacks: Map<
+		EventTypes,
+		(data: Message) => void | Promise<void>
+	> = new Map();
 
 	register(clientId: string) {
 		logger.info('client id is ', clientId);
 		this.userId = clientId;
 	}
 
-	send(
+	async send(
 		req: Message & {
 			id?: string;
 			ts?: number;
@@ -69,13 +74,18 @@ export class Messenger<EventTypes extends string, Message> {
 		},
 		attempts = 0,
 		sleepMs = 0
-	): void {
-		if (attempts > 15) {
+	): Promise<void> {
+		logger.debug(
+			`Messenger#send, attempt ${attempts}; waiting for ${
+				sleepMs / 1000
+			} seconds`
+		);
+		if (attempts > 3) {
 			return;
 		}
 
 		if (sleepMs) {
-			sleepSync(sleepMs);
+			await sleep(sleepMs);
 		}
 
 		req['id'] = uuidv4();
@@ -89,17 +99,20 @@ export class Messenger<EventTypes extends string, Message> {
 
 		switch (this.socket.readyState) {
 			case WebSocket.CONNECTING:
-				return this.send(req, attempts + 1, sleepMs + 10);
+				return this.send(req, attempts + 1, sleepMs + 100 ** attempts);
 			case WebSocket.CLOSED:
 			case WebSocket.CLOSING:
 				this.socket = this._getNewSocket();
-				return this.send(req, attempts + 1, sleepMs + 10);
+				return this.send(req, attempts + 1, sleepMs + 100 ** attempts);
 			default:
 				this.socket.send(msg);
 		}
 	}
 
-	onMessage(type: EventTypes, callback: (data: Message) => void) {
+	onMessage(
+		type: EventTypes,
+		callback: (data: Message) => void | Promise<void>
+	) {
 		if (!this.callbacks.has(type)) {
 			this.callbacks.set(type, callback);
 		}
@@ -108,14 +121,5 @@ export class Messenger<EventTypes extends string, Message> {
 	close(code?: number) {
 		this.closed = true;
 		this.socket.close(code);
-	}
-}
-
-// lol this is dumb
-function sleepSync(ms: number) {
-	const end = new Date().getTime() + ms;
-	console.warn(`sleeping ${ms}ms`);
-	while (new Date().getTime() < end) {
-		/* do nothing */
 	}
 }

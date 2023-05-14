@@ -16,7 +16,7 @@
 
 	const canvasSize: Writable<[string, string]> = writable(['720px', '900px']);
 	const mouseDown: Writable<boolean> = writable(false);
-	const debugMode: Writable<boolean> = writable(false);
+	const debugMode: Writable<string> = writable('');
 	const players: Writable<Record<string, any>> = writable({});
 	const moves: Writable<Message[]> = writable([]);
 
@@ -91,12 +91,16 @@
 	onMount(() => {
 		const isMobile = window.matchMedia('(max-width: 900px)');
 
-		if (isMobile.matches) {
-			$canvasSize = [
-				`${window.innerWidth}px`,
-				`${window.innerHeight - 200}px`
-			];
-		}
+		isMobile.addEventListener('change', (evt) => {
+			if (evt.matches) {
+				$canvasSize = [
+					`${window.innerWidth}px`,
+					`${window.innerHeight - 200}px`
+				];
+			} else {
+				$canvasSize = [`700px`, `${window.innerHeight - 200}px`];
+			}
+		});
 
 		const ctx = canvas.getContext('2d')!;
 		const pointer = new Pointer(ctx);
@@ -136,6 +140,14 @@
 			'touchstart',
 			(ev) => void ($mouseDown = true)
 		);
+
+		document.addEventListener('keypress', (evt) => {
+			if ($debugMode.length > 5) {
+				$debugMode = '';
+			}
+			$debugMode += evt.key;
+		});
+
 		canvas.addEventListener('mousemove', MouseListener(pointer, messenger));
 		canvas.addEventListener('touchmove', (ev) => {
 			const listen = MouseListener(pointer, messenger);
@@ -196,7 +208,7 @@
 		<div id="players">
 			{Object.keys($players).length} players joined.
 		</div>
-		{#if $debugMode}
+		{#if $debugMode.toLowerCase() == 'debug'}
 			<div id="log">
 				<h2>Move Log</h2>
 				<ul>

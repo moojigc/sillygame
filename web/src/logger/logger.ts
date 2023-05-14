@@ -49,5 +49,5 @@ export class Logger {
 	}
 }
 
-const logger = new Logger(import.meta.env.LOG_LEVEL || Level.debug);
+const logger = new Logger(import.meta.env.VITE_LOG_LEVEL || Level.debug);
 export default logger;
