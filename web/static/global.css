@@ -1,0 +1,15 @@
+:root {
+	font-family: Raleway, Noto Sans JP, sans-serif;
+	font-size: 16px;
+	--font-family-sans: Raleway, Noto Sans JP, sans-serif;
+	--background-body: #202122;
+	--text-main: #fff;
+	--text-secondary: #ccc;
+	--primary-color: #313b72;
+	--secondary-color: #99a7b9;
+	--theme-accent: #ffc869;
+	--mc-box-shadow-color: rgb(255, 255, 255);
+	--mc-box-shadow-color-light: rgba(0, 0, 0, 0.2);
+	--mc-box-shadow: 0 10px 15px -3px var(--mc-box-shadow-color-light),
+		0 4px 6px -4px var(--mc-box-shadow-color-light);
+}

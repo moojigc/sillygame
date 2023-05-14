@@ -74,11 +74,12 @@ type subscriber struct {
 }
 
 type Move struct {
-	ID        string      `json:"id"`
-	UserID    string      `json:"userId"`
-	Event     string      `json:"event"`
-	Timestamp int64       `json:"ts"`
-	Coords    interface{} `json:"coords"`
+	ID        string    `json:"id"`
+	UserID    string    `json:"userId"`
+	Event     string    `json:"event"`
+	Timestamp int64     `json:"ts"`
+	Coords    []float32 `json:"coords"`
+	MouseDown bool      `json:"mouseDown"`
 }
 
 func (m *Move) setUserID(id string) {
@@ -119,8 +120,9 @@ func (gs *gameServer) subscribeHandler(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	gs.sendNewPlayerAlert(ctx, c, s)
+	defer gs.sendPlayerLeaveAlert(ctx, c, s)
 
+	gs.sendNewPlayerAlert(ctx, c, s)
 	go gs.readMovesAndPublish(ctx, c, s)
 
 	err = gs.subscribe(ctx, c, s)
@@ -136,7 +138,6 @@ func (gs *gameServer) subscribeHandler(w http.ResponseWriter, r *http.Request) {
 		gs.logger.Err(err).Msg("err = gs.subscribe")
 		return
 	}
-	gs.sendPlayerLeaveAlert(ctx, c, s)
 }
 
 func (gs *gameServer) getMessages(w http.ResponseWriter, r *http.Request) {
@@ -153,7 +154,9 @@ func (gs *gameServer) getSubscribers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
-	messages, err := json.Marshal(gs.listSubscribers())
+	subs, err := json.Marshal(map[string]interface{}{
+		"data": gs.listSubscribers(),
+	})
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -161,7 +164,7 @@ func (gs *gameServer) getSubscribers(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 
-	w.Write(messages)
+	w.Write(subs)
 }
 
 func (gs *gameServer) subscribe(ctx context.Context, c *websocket.Conn, s *subscriber) error {
@@ -182,7 +185,7 @@ func (gs *gameServer) sendPlayerLeaveAlert(ctx context.Context, c *websocket.Con
 	leaveAlert, err := json.Marshal(Move{
 		ID:        uuid.New().String(),
 		UserID:    s.ID,
-		Event:     "PLAYER_LEFT",
+		Event:     PLAYER_LEFT,
 		Timestamp: time.Now().UnixMilli(),
 	})
 
@@ -210,7 +213,7 @@ func (gs *gameServer) sendNewPlayerAlert(ctx context.Context, c *websocket.Conn,
 	handshake, err := json.Marshal(Move{
 		ID:        uuid.New().String(),
 		UserID:    s.ID,
-		Event:     "HANDSHAKE",
+		Event:     HANDSHAKE,
 		Timestamp: time.Now().UnixMilli(),
 	})
 
@@ -220,10 +223,10 @@ func (gs *gameServer) sendNewPlayerAlert(ctx context.Context, c *websocket.Conn,
 
 	s.msgs <- handshake
 
-	registration, err := json.Marshal(Move{
+	playerJoined, err := json.Marshal(Move{
 		ID:        uuid.New().String(),
 		UserID:    s.ID,
-		Event:     "REGISTRATION",
+		Event:     PLAYER_JOINED,
 		Timestamp: time.Now().UnixMilli(),
 	})
 
@@ -239,7 +242,7 @@ func (gs *gameServer) sendNewPlayerAlert(ctx context.Context, c *websocket.Conn,
 			continue
 		}
 		select {
-		case s.msgs <- registration:
+		case s.msgs <- playerJoined:
 			gs.logger.Debug().Msgf("sending msg to %s\n", s.ID)
 		default:
 			go s.closeSlow()
@@ -250,6 +253,7 @@ func (gs *gameServer) sendNewPlayerAlert(ctx context.Context, c *websocket.Conn,
 }
 
 func (gs *gameServer) readMovesAndPublish(ctx context.Context, c *websocket.Conn, s *subscriber) {
+	defer gs.deleteSubscriberUnsafe(s)
 	for {
 		_, reader, err := c.Reader(ctx)
 
@@ -275,7 +279,7 @@ func (gs *gameServer) readMovesAndPublish(ctx context.Context, c *websocket.Conn
 
 		move.setUserID(s.ID)
 
-		gs.logger.Info().Msgf("[subscriber %s] PUBLISHING %v", s.ID, move.Coords)
+		gs.logger.Info().Msgf("[subscriber %s] PUBLISHING %v;\n\tMouseDown %v", s.ID, move.Coords, move.MouseDown)
 		bytes, err := json.Marshal(move)
 
 		if err != nil {
@@ -336,8 +340,13 @@ func (gs *gameServer) addSubscriber(s *subscriber) {
 func (gs *gameServer) deleteSubscriber(s *subscriber) {
 	gs.subscribersMu.Lock()
 	defer gs.subscribersMu.Unlock()
+	gs.deleteSubscriber(s)
+}
+
+// deleteSubscriber deletes the given subscriber.
+func (gs *gameServer) deleteSubscriberUnsafe(s *subscriber) {
 	delete(gs.subscribers, s.ID)
-	gs.logger.Debug().Msgf("Goodbye subscriber %s", s.ID)
+	gs.logger.Info().Msgf("Goodbye subscriber %s", s.ID)
 }
 
 // func (gs *gameServer) countSubscriber() int {

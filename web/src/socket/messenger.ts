@@ -1,5 +1,5 @@
 import logger from '../logger/logger';
-import * as uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 function getProtocol(): 'ws:' | 'wss:' {
 	if (window.location.protocol == 'https:') {
@@ -20,7 +20,7 @@ export class Messenger<EventTypes extends string, Message> {
 		this.socket = this._getNewSocket();
 	}
 
-	clientId: string | null = null;
+	userId: string | null = null;
 
 	private _getNewSocket() {
 		const ws = new WebSocket(getProtocol() + this.address, this.protocols);
@@ -58,18 +58,19 @@ export class Messenger<EventTypes extends string, Message> {
 
 	register(clientId: string) {
 		logger.info('client id is ', clientId);
-		this.clientId = clientId;
+		this.userId = clientId;
 	}
 
 	send(
 		req: Message & {
 			id?: string;
 			ts?: number;
+			userId?: string;
 		},
 		attempts = 0,
 		sleepMs = 0
 	): void {
-		if (attempts > 5) {
+		if (attempts > 15) {
 			return;
 		}
 
@@ -77,8 +78,12 @@ export class Messenger<EventTypes extends string, Message> {
 			sleepSync(sleepMs);
 		}
 
-		req['id'] = uuid.v4();
+		req['id'] = uuidv4();
 		req['ts'] = Date.now();
+		if (this.userId) {
+			req['userId'] = this.userId!;
+		}
+
 		const msg = JSON.stringify(req);
 		logger.debug(`Messenger#send`, msg);
 

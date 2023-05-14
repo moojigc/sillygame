@@ -1,23 +1,21 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Coords, Pointer } from '../game/pointer';
-	import { Keys } from '../game/keys';
+	import {
+		Events,
+		type EventTypes,
+		Keys,
+		type Message
+	} from '../game/constants';
 	import { Messenger } from '../socket/messenger';
 	import logger from '../logger/logger';
 	import { writable, type Writable } from 'svelte/store';
-
-	type EventTypes = 'M' | 'HANDSHAKE' | 'REGISTRATION' | 'PLAYER_LEFT';
-	type MessageOrigin = 'S' | 'C';
-	type Message<T extends EventTypes = EventTypes> = {
-		source?: MessageOrigin;
-		userId?: T extends 'HANDSHAKE' ? string : undefined;
-		event: EventTypes;
-		ts: number;
-		coords: [number, number];
-	};
+	import Header from '../components/Header.svelte';
 
 	let canvas: HTMLCanvasElement;
 
+	const mouseDown: Writable<boolean> = writable(false);
+	const debugMode: Writable<boolean> = writable(false);
 	const players: Writable<Record<string, any>> = writable({});
 	const moves: Writable<Message[]> = writable([]);
 
@@ -28,6 +26,20 @@
 		[Keys.Right]: (pt: Pointer) => ({ x: pt.speed })
 	};
 
+	function getMousePos(
+		canvas: HTMLCanvasElement,
+		evt: { clientX: number; clientY: number }
+	) {
+		const rect = canvas.getBoundingClientRect(), // abs. size of element
+			scaleX = canvas.width / rect.width, // relationship bitmap vs. element for x
+			scaleY = canvas.height / rect.height; // relationship bitmap vs. element for y
+
+		return {
+			x: (evt.clientX - rect.left) * scaleX, // scale mouse coordinates after they have
+			y: (evt.clientY - rect.top) * scaleY // been adjusted to be relative to element
+		};
+	}
+
 	function MoveListener(
 		pointer: Pointer,
 		messenger: Messenger<EventTypes, Message>
@@ -37,16 +49,32 @@
 				const fn = keyDownMapping[ev.key];
 				pointer.moveRel(fn(pointer));
 				messenger.send({
-					event: 'M',
+					event: Events.M,
 					ts: Date.now(),
+					mouseDown: true,
 					coords: [pointer.x, pointer.y]
 				});
 			}
 		};
 	}
 
+	function MouseListener(
+		pointer: Pointer,
+		messenger: Messenger<EventTypes, Message>
+	) {
+		return (ev: { clientX: number; clientY: number }) => {
+			pointer.moveAbs(getMousePos(canvas, ev), $mouseDown);
+			messenger.send({
+				event: Events.M,
+				coords: [pointer.x, pointer.y],
+				ts: Date.now(),
+				mouseDown: $mouseDown
+			});
+		};
+	}
+
 	function getUser(id?: string, messenger?: Messenger<EventTypes, Message>) {
-		if (id == messenger?.clientId) {
+		if (id == messenger?.userId) {
 			return `You (${id})`;
 		}
 		return `User ${id}`;
@@ -57,13 +85,16 @@
 	onMount(() => {
 		const ctx = canvas.getContext('2d')!;
 		const pointer = new Pointer(ctx);
+
 		messenger = new Messenger<EventTypes, Message>(
 			import.meta.env.VITE_WEBSOCKET_URL
 		);
 
 		fetch(import.meta.env.VITE_WEB_URL + '/subscribers')
 			.then(async (res) => {
-				const subscribers: { id: string }[] = await res.json();
+				const subscribers: { id: string }[] = (await res.json())[
+					'data'
+				];
 
 				$players = subscribers.reduce(
 					(pv, s) => ({
@@ -75,12 +106,15 @@
 			})
 			.catch(console.error);
 
-		const moveListener = MoveListener(pointer, messenger);
-		// const [shiftDownListener, shiftUpListener] = ShiftListeners(pointer);
+		document.addEventListener('keydown', MoveListener(pointer, messenger));
+		document.addEventListener('mouseup', (ev) => void ($mouseDown = false));
+		document.addEventListener(
+			'mousedown',
+			(ev) => void ($mouseDown = true)
+		);
+		canvas.addEventListener('mousemove', MouseListener(pointer, messenger));
 
-		document.addEventListener('keydown', moveListener);
-
-		messenger.onMessage('HANDSHAKE', (data: Message<'HANDSHAKE'>) => {
+		messenger.onMessage(Events.HANDSHAKE, (data: Message<'HANDSHAKE'>) => {
 			logger.debug('+page.svelte callback HANDSHAKE');
 			messenger.register(data.userId!);
 			$players = {
@@ -89,15 +123,14 @@
 			};
 		});
 
-		messenger.onMessage('M', (data) => {
-			if (data.userId !== messenger.clientId) {
-				pointer.moveAbs(Coords.fromVector(data.coords));
-			}
+		messenger.onMessage(Events.M, (data) => {
 			logger.debug('+page.svelte callback', data);
-			// $moves = [data, ...$moves];
+			if (data.userId !== messenger.userId) {
+				pointer.moveAbs(Coords.fromVector(data.coords), data.mouseDown);
+			}
 		});
 
-		messenger.onMessage('REGISTRATION', (data) => {
+		messenger.onMessage(Events.PLAYER_JOINED, (data) => {
 			logger.debug('+page.svelte callback', data);
 
 			$players = {
@@ -106,7 +139,7 @@
 			};
 		});
 
-		messenger.onMessage('PLAYER_LEFT', (data) => {
+		messenger.onMessage(Events.PLAYER_LEFT, (data) => {
 			logger.debug('+page.svelte callback', data);
 
 			delete $players[data.userId!];
@@ -116,44 +149,51 @@
 
 		return () => {
 			messenger.close();
-			document.removeEventListener('keydown', moveListener);
 		};
 	});
 </script>
 
+<Header />
 <div id="container" class="pure-g">
 	<div>
-		<h1 style="text-align: center">Welcome to a silly game.</h1>
-		<h2>{Object.keys($players).length}</h2>
-		<canvas bind:this={canvas} id="canvas" width="720" height="480" />
-		<div id="log">
-			<h2>Move Log</h2>
-			<ul>
-				{#each $moves as move}
-					<li>
-						{#if move.event == 'M'}
-							<p>
-								<code>
-									{getUser(move.userId, messenger)}
-								</code>
-								moved to {move.coords[0]}, {move.coords[1]}
-							</p>
-						{:else}
-							<p>
-								<code>
-									{getUser(move.userId, messenger)}
-								</code>
-								joined!
-							</p>
-						{/if}
-					</li>
-				{/each}
-			</ul>
+		<h1>Welcome to a silly game.</h1>
+		<canvas bind:this={canvas} id="canvas" width="720px" height="1280px" />
+		<div id="players">
+			{Object.keys($players).length} players joined.
 		</div>
+		{#if $debugMode}
+			<div id="log">
+				<h2>Move Log</h2>
+				<ul>
+					{#each $moves as move}
+						<li>
+							{#if move.event == Events.M}
+								<p>
+									<code>
+										{getUser(move.userId, messenger)}
+									</code>
+									moved to {move.coords[0]}, {move.coords[1]}
+								</p>
+							{:else}
+								<p>
+									<code>
+										{getUser(move.userId, messenger)}
+									</code>
+									joined!
+								</p>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			</div>
+		{/if}
 	</div>
 </div>
 
 <style>
+	h1 {
+		text-align: center;
+	}
 	canvas {
 		border: 1px black solid;
 	}
@@ -163,7 +203,12 @@
 		margin-right: auto;
 		justify-content: center;
 	}
+	#players {
+		padding: 1rem;
+		text-align: center;
+	}
 	#log {
+		text-align: center;
 		max-width: 600px;
 		max-height: 400px;
 		overflow-y: scroll;
