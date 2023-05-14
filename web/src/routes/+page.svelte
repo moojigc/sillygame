@@ -62,7 +62,12 @@
 		pointer: Pointer,
 		messenger: Messenger<EventTypes, Message>
 	) {
-		return (ev: { clientX: number; clientY: number }) => {
+		return (ev: {
+			clientX: number;
+			clientY: number;
+			preventDefault: () => void;
+		}) => {
+			ev.preventDefault();
 			pointer.moveAbs(getMousePos(canvas, ev), $mouseDown);
 			messenger.send({
 				event: Events.M,
@@ -112,7 +117,17 @@
 			'mousedown',
 			(ev) => void ($mouseDown = true)
 		);
+
+		document.addEventListener(
+			'touchend',
+			(ev) => void ($mouseDown = false)
+		);
+		document.addEventListener(
+			'touchstart',
+			(ev) => void ($mouseDown = true)
+		);
 		canvas.addEventListener('mousemove', MouseListener(pointer, messenger));
+		// canvas.addEventListener('touchmove', ev);
 
 		messenger.onMessage(Events.HANDSHAKE, (data: Message<'HANDSHAKE'>) => {
 			logger.debug('+page.svelte callback HANDSHAKE');
