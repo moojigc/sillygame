@@ -14,11 +14,13 @@
 
 	let canvas: HTMLCanvasElement;
 
+	const eraseMode: Writable<boolean> = writable(false);
 	const canvasSize: Writable<[string, string]> = writable(['720px', '900px']);
 	const mouseDown: Writable<boolean> = writable(false);
 	const debugMode: Writable<string> = writable('');
 	const players: Writable<Record<string, any>> = writable({});
 	const moves: Writable<Message[]> = writable([]);
+	const ping: Writable<number> = writable(0);
 
 	const keyDownMapping = {
 		[Keys.Up]: (pt: Pointer) => ({ y: -pt.speed }),
@@ -51,9 +53,10 @@
 				const { x, y } = pointer.getAbs(fn(pointer));
 				messenger.send({
 					event: Events.M,
-					ts: Date.now(),
+					sentAt: Date.now(),
 					mouseDown: true,
-					coords: [x, y]
+					coords: [x, y],
+					color: pointer.color
 				});
 			}
 		};
@@ -74,8 +77,9 @@
 			const message: Message = {
 				event: Events.M,
 				coords: [x, y],
-				ts: Date.now(),
-				mouseDown: $mouseDown
+				sentAt: Date.now(),
+				mouseDown: $mouseDown,
+				color: pointer.color
 			};
 			messenger.send(message);
 
@@ -156,6 +160,7 @@
 
 		const listen = MouseListener(pointer, messenger);
 		canvas.addEventListener('touchmove', (ev) => {
+			// listen(ev.changedTouches[0]);
 			$mouseDown = true;
 			for (const t of ev.changedTouches) {
 				listen(t);
@@ -176,6 +181,9 @@
 			logger.debug('+page.svelte callback', data);
 			if (data.userId !== messenger.userId) {
 				pointer.moveAbs(Coords.fromVector(data.coords), data.mouseDown);
+				$ping = data.serverRespondedAt
+					? Date.now() - data.serverRespondedAt
+					: $ping;
 			}
 		});
 
@@ -212,8 +220,13 @@
 			width={$canvasSize[0]}
 			height={$canvasSize[1]}
 		/>
-		<div id="players">
-			{Object.keys($players).length} players joined.
+		<div class="info">
+			<div id="players">
+				{Object.keys($players).length} players joined.
+			</div>
+			<div>
+				Ping: {$ping}ms
+			</div>
 		</div>
 		{#if $debugMode.toLowerCase() == 'debug'}
 			<div id="log">
@@ -260,9 +273,10 @@
 		margin-right: auto;
 		justify-content: center;
 	}
-	#players {
+	.info {
 		padding: 1rem;
-		text-align: center;
+		display: flex;
+		justify-content: space-between;
 	}
 	#log {
 		text-align: center;

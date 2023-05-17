@@ -74,12 +74,14 @@ type subscriber struct {
 }
 
 type Move struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"userId"`
-	Event     string    `json:"event"`
-	Timestamp int64     `json:"ts"`
-	Coords    []float32 `json:"coords"`
-	MouseDown bool      `json:"mouseDown"`
+	ID                string    `json:"id"`
+	UserID            string    `json:"userId"`
+	Event             string    `json:"event"`
+	SentAt            int64     `json:"sentAT"`
+	Coords            []float32 `json:"coords"`
+	MouseDown         bool      `json:"mouseDown"`
+	UpPing            int64     `json:"upPing"`
+	ServerRespondedAt int64     `json:"serverRespondedAt"`
 }
 
 func (m *Move) setUserID(id string) {
@@ -183,10 +185,10 @@ func (gs *gameServer) subscribe(ctx context.Context, c *websocket.Conn, s *subsc
 
 func (gs *gameServer) sendPlayerLeaveAlert(ctx context.Context, c *websocket.Conn, s *subscriber) error {
 	leaveAlert, err := json.Marshal(Move{
-		ID:        uuid.New().String(),
-		UserID:    s.ID,
-		Event:     PLAYER_LEFT,
-		Timestamp: time.Now().UnixMilli(),
+		ID:     uuid.New().String(),
+		UserID: s.ID,
+		Event:  PLAYER_LEFT,
+		SentAt: time.Now().UnixMilli(),
 	})
 
 	if err != nil {
@@ -211,10 +213,10 @@ func (gs *gameServer) sendPlayerLeaveAlert(ctx context.Context, c *websocket.Con
 func (gs *gameServer) sendNewPlayerAlert(ctx context.Context, c *websocket.Conn, s *subscriber) error {
 
 	handshake, err := json.Marshal(Move{
-		ID:        uuid.New().String(),
-		UserID:    s.ID,
-		Event:     HANDSHAKE,
-		Timestamp: time.Now().UnixMilli(),
+		ID:     uuid.New().String(),
+		UserID: s.ID,
+		Event:  HANDSHAKE,
+		SentAt: time.Now().UnixMilli(),
 	})
 
 	if err != nil {
@@ -224,10 +226,10 @@ func (gs *gameServer) sendNewPlayerAlert(ctx context.Context, c *websocket.Conn,
 	s.msgs <- handshake
 
 	playerJoined, err := json.Marshal(Move{
-		ID:        uuid.New().String(),
-		UserID:    s.ID,
-		Event:     PLAYER_JOINED,
-		Timestamp: time.Now().UnixMilli(),
+		ID:     uuid.New().String(),
+		UserID: s.ID,
+		Event:  PLAYER_JOINED,
+		SentAt: time.Now().UnixMilli(),
 	})
 
 	if err != nil {
@@ -277,9 +279,11 @@ func (gs *gameServer) readMovesAndPublish(ctx context.Context, c *websocket.Conn
 			continue
 		}
 
+		move.ServerRespondedAt = time.Now().UnixMilli()
+		move.UpPing = time.Now().UnixMilli() - move.SentAt
 		move.setUserID(s.ID)
 
-		gs.logger.Info().Msgf("[subscriber %s] PUBLISHING %v;\n\tMouseDown %v", s.ID, move.Coords, move.MouseDown)
+		gs.logger.Info().Msgf("[subscriber %s] PUBLISHING %v;\n\tMouseDown %v, Upload ping %d", s.ID, move.Coords, move.MouseDown, move.UpPing)
 		bytes, err := json.Marshal(move)
 
 		if err != nil {

@@ -22,7 +22,10 @@ export type Message<T extends EventTypes = EventTypes> = {
 	source?: MessageOrigin;
 	userId?: T extends 'HANDSHAKE' ? string : undefined;
 	event: EventTypes;
-	ts: number;
 	mouseDown?: boolean;
 	coords: [number, number];
+	color?: string;
+	sentAt: number;
+	upPing?: number;
+	serverRespondedAt?: number;
 };

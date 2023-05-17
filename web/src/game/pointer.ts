@@ -1,6 +1,6 @@
 import logger from '../logger/logger';
 
-const TOLERANCE_SCALE = 12;
+const TOLERANCE_SCALE = 100;
 class Moves {
 	private _moves: Coords[] = [];
 	add(move: Coords) {
@@ -117,16 +117,9 @@ export class Pointer implements Coords {
 		}
 		const [distX, distY] = [Math.abs(x - this.x), Math.abs(y - this.y)];
 
-		const [avgX, avgY] = this._moves.getGreatestAverage();
+		logger.debug('greaterDistance', [distX, distY]);
 
-		logger.debug(
-			'greaterDistance',
-			[distX, distY],
-			'moves.getGreatestAverage',
-			[avgX, avgY]
-		);
-
-		return distX > avgX * TOLERANCE_SCALE || distY > avgY * TOLERANCE_SCALE;
+		return distX > TOLERANCE_SCALE || distY > TOLERANCE_SCALE;
 	}
 
 	private _move() {
