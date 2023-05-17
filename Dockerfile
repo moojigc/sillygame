@@ -25,7 +25,7 @@ COPY --from=go-build /app/web/src ./src
 COPY --from=go-build /app/web/static ./static
 
 ENV VITE_WEBSOCKET_URL=sillygame.chimid.rocks/subscribe
-ENV VITE_WEB_URL=sillygame.chimid.rocks
+ENV VITE_WEB_URL=https://sillygame.chimid.rocks
 ENV VITE_LOG_LEVEL=error
 
 RUN npm run build
