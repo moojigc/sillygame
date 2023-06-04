@@ -1,4 +1,4 @@
-package websocket
+package move
 
 const M = "M"
 const HANDSHAKE = "HANDSHAKE"

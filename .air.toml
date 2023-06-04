@@ -3,9 +3,9 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  args_bin = ["localhost:5000"]
-  bin = "./tmp/main"
-  cmd = "go build -o ./tmp/main ./cmd/server"
+  args_bin = ["up", "sillygame"]
+  bin = "/mnt/c/Program Files/Docker/Docker/resources/bin/docker"
+  cmd = "compose"
   delay = 0
   exclude_dir = ["assets", "tmp", "vendor", "testdata", "web"]
   exclude_file = []
@@ -13,8 +13,8 @@ tmp_dir = "tmp"
   exclude_unchanged = false
   follow_symlink = false
   full_bin = ""
-  include_dir = []
-  include_ext = ["go", "tpl", "tmpl", "html"]
+  include_dir = ["web"]
+  include_ext = ["go", "tpl", "tmpl", "html", "ts", "svelte"]
   include_file = []
   kill_delay = "0s"
   log = "build-errors.log"

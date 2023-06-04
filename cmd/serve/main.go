@@ -10,8 +10,8 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/moojigc/routines_game/websocket"
-	"github.com/rs/zerolog"
+	"github.com/moojigc/sillygame/gameserver"
+	"github.com/moojigc/sillygame/pkg/sglog"
 )
 
 func main() {
@@ -35,24 +35,18 @@ func run() error {
 		return err
 	}
 
-	var logLevel zerolog.Level
-	logLevel, err = zerolog.ParseLevel(os.Getenv("LOG"))
-
-	if err != nil {
-		logLevel = zerolog.ErrorLevel
-	}
-
-	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout}).
-		With().Timestamp().Logger().Level(logLevel)
+	logger := sglog.Logger(context.Background())
 
 	logger.Log().Msgf("listening on http://%v", l.Addr())
 
-	cs := websocket.NewGameServer(&logger)
+	gs := gameserver.New()
+
 	s := &http.Server{
-		Handler:      cs,
+		Handler:      gs,
 		ReadTimeout:  time.Second * 10,
 		WriteTimeout: time.Second * 10,
 	}
+
 	errc := make(chan error, 1)
 	go func() {
 		errc <- s.Serve(l)

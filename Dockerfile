@@ -5,12 +5,14 @@ WORKDIR /app
 COPY go.* .
 
 COPY ./cmd ./cmd
-COPY ./scoretracker ./scoretracker
-COPY ./websocket ./websocket
+# COPY ./scoretracker ./scoretracker
+COPY ./pkg ./pkg
+COPY ./gameserver ./gameserver
+COPY ./move ./move
 COPY ./web ./web
 
-RUN go install ./cmd/server
-RUN go build -o /app/routinesgame ./cmd/server
+RUN go install ./cmd/serve
+RUN go build -o /app/sillygame ./cmd/serve
 
 ### ------------ ###
 FROM node:18-alpine AS node-build
@@ -34,8 +36,8 @@ RUN npm run build
 FROM alpine:3.18
 
 WORKDIR /app
-COPY --from=go-build /app/routinesgame /app/routinesgame
+COPY --from=go-build /app/sillygame /app/sillygame
 COPY --from=node-build /app/build /app/static
 
-CMD [ "./routinesgame", "0.0.0.0:80" ]
+CMD [ "./sillygame", "0.0.0.0:80" ]
 

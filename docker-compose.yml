@@ -1,0 +1,29 @@
+version: '3.7'
+
+services:
+  web:
+    command: npm run dev -- --host
+    build:
+      context: ./web
+      dockerfile: Dockerfile.development
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_WEBSOCKET_URL=localhost:5000/subscribe
+      - VITE_WEB_URL=localhost:5000
+  ws:
+    # command: ./sillygame 0.0.0.0:5000
+    build:
+      context: .
+      dockerfile: Dockerfile.development
+    ports:
+      - "5000:5000"
+    environment:
+      - LOG=debug
+    volumes:
+      - .:/app
+    
